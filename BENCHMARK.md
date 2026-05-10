@@ -1,6 +1,6 @@
 # CDC Synthetic Benchmark — MVP
 
-This is the second public benchmark snapshot for Cognitive Delta Compression (CDC). It remains deterministic: it validates the current MVP pipeline, not general LLM answer quality.
+This is the latest public benchmark snapshot for Cognitive Delta Compression (CDC), rerun on 2026-05-10. It remains deterministic: it validates the current MVP pipeline, not general LLM answer quality.
 
 ## Scope
 
@@ -40,6 +40,19 @@ It does **not** cover:
 | Compact retrieval coherence pass rate | 80.0% |
 | Expected tension detection | 100.0% |
 | Verification issues | 0 |
+| Overall MVP benchmark score | 6.5 / 10 |
+
+## Verdict
+
+The benchmark is **conclusive as an MVP engineering validation**, but **not yet very conclusive as a scientific or product-level proof**.
+
+CDC currently preserves expected continuity signals, labels uncertainty, detects expected tensions, and passes all deterministic verification checks. However, the token-saving advantage is still modest: it beats raw history and naive summary memory, but it uses more tokens than the compact lexical retrieval baseline.
+
+A fair score is **6.5 / 10**:
+
+- strong for correctness, safety invariants, and continuity preservation;
+- medium for compression efficiency;
+- weak-to-unknown for real-world answer quality because there is no human or LLM-as-judge evaluation yet.
 
 ## Interpretation
 
