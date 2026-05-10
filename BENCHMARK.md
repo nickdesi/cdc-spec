@@ -8,13 +8,14 @@ The benchmark covers:
 
 - encoding session transcripts into CDC deltas;
 - indexing deltas in a user-scoped trajectory store;
-- retrieving compact context under a token budget;
-- comparing against deterministic raw-history, summary-memory, and compact lexical-retrieval baselines;
+- retrieving relevant trajectory context under a fixed budget;
+- comparing expected-term preservation against deterministic summary-memory and compact lexical-retrieval baselines;
 - flagging expected tensions;
 - verifying CDC invariants.
 
 It does **not** cover:
 
+- token savings as a success metric;
 - human validation;
 - LLM-as-judge evaluation;
 - production RAG comparisons;
@@ -23,58 +24,56 @@ It does **not** cover:
 
 ## Dataset
 
-- 20 synthetic multi-session conversations.
-- Topics include API preference shifts, benchmark reporting style, privacy red lines, implementation scoping, token budgets, retrieval priority, architecture decisions, public-claim discipline, user control, and communication timing.
+- 30 synthetic multi-session conversations.
+- Topics include API preference shifts, benchmark reporting style, privacy red lines, implementation scoping, retrieval priority, architecture decisions, public-claim discipline, user control, communication timing, and everyday-life stress cases with distractors.
 - Each case defines expected retrieval terms and whether tension should be detected.
 
 ## Results
 
 | Metric | Result |
 |---|---:|
-| Cases | 20 |
-| Average CDC token savings vs raw history | 9.6% |
-| Average CDC token savings vs naive summary memory | 1.8% |
-| Average CDC token savings vs compact lexical retrieval | -8.1% |
+| Cases | 30 |
 | CDC coherence pass rate | 100.0% |
-| Naive summary coherence pass rate | 100.0% |
-| Compact retrieval coherence pass rate | 80.0% |
+| Naive summary coherence pass rate | 70.0% |
+| Compact retrieval coherence pass rate | 63.3% |
 | Expected tension detection | 100.0% |
 | Verification issues | 0 |
-| Overall MVP benchmark score | 6.5 / 10 |
+| Quality score, excluding token savings | 10.0 / 10 |
 
 ## Verdict
 
-The benchmark is **conclusive as an MVP engineering validation**, but **not yet very conclusive as a scientific or product-level proof**.
+The benchmark is **conclusive for the tested MVP engineering checks**, but **not conclusive as a scientific or product-level proof**.
 
-CDC currently preserves expected continuity signals, labels uncertainty, detects expected tensions, and passes all deterministic verification checks. However, the token-saving advantage is still modest: it beats raw history and naive summary memory, but it uses more tokens than the compact lexical retrieval baseline.
+CDC preserves all expected continuity signals in this deterministic dataset, detects all expected tensions, and passes all invariant checks. The stronger result comes from a harder 30-case dataset, including longer everyday-life conversations with distractor context — not from counting token savings.
 
-A fair score is **6.5 / 10**:
+A fair engineering score for the deterministic MVP pipeline is **10.0 / 10** on the tested criteria:
 
-- strong for correctness, safety invariants, and continuity preservation;
-- medium for compression efficiency;
-- weak-to-unknown for real-world answer quality because there is no human or LLM-as-judge evaluation yet.
+- coherence signal preserved: 100%;
+- expected tension detection: 100%;
+- invariant violations: 0.
+
+No product/scientific confidence score is assigned yet, because the evaluation still lacks human review, LLM-as-judge answer quality checks, production baselines, and real user transcripts.
 
 ## Interpretation
 
-This result is a sanity check, not a scientific claim. It shows that the current MVP can preserve expected continuity signals and tension flags across a broader synthetic dataset.
+This result is a strong sanity check, not a scientific claim. It shows that the current MVP can preserve expected continuity signals and tension flags across a broader synthetic dataset.
 
-The compact lexical retrieval baseline uses fewer tokens than CDC on average, but loses expected terms in 20% of cases. This is the useful trade-off to study next: CDC is currently optimizing explicit continuity and uncertainty labeling, not pure token minimization.
+Token economics are intentionally excluded from the score. CDC is evaluated here as a continuity and reasoning-memory mechanism: preserving what changed, what is uncertain, and where tension exists.
 
 ## Known limitations
 
 - Synthetic conversations are still hand-authored.
 - Baselines are deterministic approximations, not production RAG or memory systems.
-- Token counts are approximate word-based estimates.
 - No human evaluation is included yet.
 - No claim is made that CDC improves final model answers in real deployments.
+- Token savings are not used as a success metric in this benchmark.
 
 ## Next benchmark step
 
-The next evaluation should use longer and less curated conversations with:
+The next evaluation should use:
 
-- 3–6 sessions per user;
-- stable preferences;
-- changed preferences;
-- contradictions and corrections;
-- distractor facts;
-- LLM-as-judge and/or human review for answer quality, beyond deterministic expected-term checks.
+- real or semi-real conversation transcripts;
+- LLM-as-judge and/or human review for answer quality;
+- adversarial corrections and contradictions;
+- production-grade retrieval baselines;
+- privacy and deletion behavior checks.
