@@ -3,6 +3,10 @@
 > **FR — Ne stocke pas seulement des faits. Stocke les transitions.**  
 > **EN — Don’t only store facts. Store transitions.**
 
+```text
+ENCODE → INDEX → FOSSILIZE → RETRIEVE → VERIFY
+```
+
 ---
 
 # Français
@@ -76,7 +80,7 @@ CDC est complémentaire au RAG. Il ne remplace pas la recherche documentaire.
 SESSION
   │
   ▼
-ENCODE ──▶ INDEX ──▶ FOSSILIZE ──▶ RETRIEVE ──▶ VERIFY ──▶ contexte LLM
+ENCODE ──▶ INDEX ──▶ FOSSILIZE ──▶ RETRIEVE ──▶ VERIFY ──▶ LLM context
   ▲                                      │
   └────────────── feedback ◀────────────┘
 ```
@@ -96,9 +100,11 @@ Ce dépôt contient la **spécification publique**. L’implémentation MVP est 
 Lecture recommandée :
 
 1. [`README.md`](./README.md) — concept général ;
-2. [`BENCHMARK.md`](./BENCHMARK.md) — résultats synthétiques actuels ;
-3. [`RESEARCH.md`](./RESEARCH.md) — protocole d’évaluation ;
-4. [`ETHICS.md`](./ETHICS.md) — contraintes éthiques et droits utilisateur.
+2. [`WHY_CDC.md`](./WHY_CDC.md) — pourquoi CDC est utile ;
+3. [`BENCHMARK.md`](./BENCHMARK.md) — résultats synthétiques actuels ;
+4. [`RESEARCH.md`](./RESEARCH.md) — protocole d’évaluation ;
+5. [`EVALUATION_PLAN.md`](./EVALUATION_PLAN.md) — prochaine mini-évaluation semi-réelle ;
+6. [`ETHICS.md`](./ETHICS.md) — contraintes éthiques et droits utilisateur.
 
 Dans une application, le flux cible est :
 
@@ -172,7 +178,7 @@ Ouvrez une Issue pour :
 - travaux liés ;
 - collaborations de recherche.
 
-Merci de distinguer clairement les hypothèses des résultats validés.
+Please clearly distinguish hypotheses from validated results.
 
 ---
 
@@ -267,9 +273,11 @@ This repository contains the **public specification**. The MVP implementation is
 Suggested reading order:
 
 1. [`README.md`](./README.md) — general concept;
-2. [`BENCHMARK.md`](./BENCHMARK.md) — current synthetic results;
-3. [`RESEARCH.md`](./RESEARCH.md) — evaluation protocol;
-4. [`ETHICS.md`](./ETHICS.md) — ethical constraints and user rights.
+2. [`WHY_CDC.md`](./WHY_CDC.md) — why CDC matters;
+3. [`BENCHMARK.md`](./BENCHMARK.md) — current synthetic results;
+4. [`RESEARCH.md`](./RESEARCH.md) — evaluation protocol;
+5. [`EVALUATION_PLAN.md`](./EVALUATION_PLAN.md) — next semi-real mini-evaluation;
+6. [`ETHICS.md`](./ETHICS.md) — ethical constraints and user rights.
 
 In an application, the target flow is:
 
