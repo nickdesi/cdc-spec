@@ -1,53 +1,243 @@
 # Cognitive Delta Compression (CDC)
 
-> **Don't store facts. Store transitions.**
-
-Cognitive Delta Compression (CDC) is a research-stage memory architecture for LLM applications. It stores **how a user's understanding changes over time** instead of storing only isolated facts, chunks, or summaries.
-
-CDC is intended for longitudinal interactions where continuity matters: coaching, research assistance, education, product discovery, therapy-adjacent journaling, and technical collaboration.
+> **FR — Ne stocke pas seulement des faits. Stocke les transitions.**  
+> **EN — Don’t only store facts. Store transitions.**
 
 ---
 
-## Why CDC exists
+# Français
 
-Most LLM memory systems store some variant of:
+## À quoi sert CDC ?
 
-```text
-(entity, attribute, value, timestamp)
-```
+**CDC — Cognitive Delta Compression** est une architecture de mémoire pour applications LLM. Son objectif est de conserver **l’évolution de la compréhension d’un utilisateur dans le temps**, plutôt que de stocker uniquement des faits isolés, des extraits de documents ou des résumés.
 
-That works for stable facts, but it loses the trajectory of reasoning:
+CDC sert aux interactions longues où la continuité est importante :
 
-- a preference that became more precise;
-- a belief that weakened after new evidence;
-- a technical decision that changed because constraints changed;
-- a contradiction that should stay visible instead of being overwritten.
+- assistance de recherche ;
+- coaching ou accompagnement long terme ;
+- éducation ;
+- collaboration technique ;
+- découverte produit ;
+- journaling ou réflexion personnelle avec fortes contraintes éthiques.
 
-CDC stores a different unit:
-
-```text
-Δ(M_n → M_n+1) + anchor + confidence + decay + tension state
-```
-
-A **cognitive delta** is not “what the user said”. It is the directional transition between two states of understanding.
+L’idée centrale : un utilisateur ne se résume pas à une liste de préférences. Ses préférences, croyances, objectifs et contraintes **changent**. CDC cherche à représenter ces changements.
 
 ---
 
-## Current status
+## Ce que fait CDC
 
-CDC is **not production-ready** and should not be presented as validated science yet.
+Au lieu de mémoriser seulement :
 
-| Workstream | Status |
+```text
+utilisateur préfère X
+```
+
+CDC essaie de mémoriser :
+
+```text
+l’utilisateur préférait X, puis a évolué vers Y après telle contrainte ou correction
+```
+
+Une unité CDC est un **delta cognitif** :
+
+```text
+Δ(état mental n → état mental n+1)
++ ancrage éventuel
++ confiance
++ décroissance dans le temps
++ tension/contradiction éventuelle
+```
+
+CDC distingue notamment :
+
+- `ANCHORED` : une information vérifiable ou explicitement sourcée ;
+- `INFERRED` : une inférence issue de la conversation, incertaine par définition.
+
+Les inférences ne doivent jamais être présentées comme des faits certains.
+
+---
+
+## Pourquoi ne pas utiliser seulement RAG ou une mémoire classique ?
+
+| Approche | Ce qui est stocké | Limite principale |
+|---|---|---|
+| RAG | morceaux de documents | retrouve du contexte, mais pas forcément l’évolution de l’utilisateur |
+| Mémoire factuelle | préférences/faits extraits | écrase souvent les changements et contradictions |
+| Résumé de conversation | synthèse compacte | peut perdre les raisons du changement |
+| CDC | transitions, confiance, tensions | encore expérimental, doit être validé |
+
+CDC est complémentaire au RAG. Il ne remplace pas la recherche documentaire.
+
+---
+
+## Architecture
+
+```text
+SESSION
+  │
+  ▼
+ENCODE ──▶ INDEX ──▶ FOSSILIZE ──▶ RETRIEVE ──▶ VERIFY ──▶ contexte LLM
+  ▲                                      │
+  └────────────── feedback ◀────────────┘
+```
+
+1. **ENCODE** — extrait des transitions depuis une session.
+2. **INDEX** — stocke les deltas dans une trajectoire utilisateur.
+3. **FOSSILIZE** — compresse les chaînes stables de deltas.
+4. **RETRIEVE** — injecte le plus petit contexte utile sous budget de tokens.
+5. **VERIFY** — vérifie les invariants, les sources et les tensions.
+
+---
+
+## Comment l’utiliser aujourd’hui ?
+
+Ce dépôt contient la **spécification publique**. L’implémentation MVP est encore privée pendant la phase de validation.
+
+Lecture recommandée :
+
+1. [`README.md`](./README.md) — concept général ;
+2. [`BENCHMARK.md`](./BENCHMARK.md) — résultats synthétiques actuels ;
+3. [`RESEARCH.md`](./RESEARCH.md) — protocole d’évaluation ;
+4. [`ETHICS.md`](./ETHICS.md) — contraintes éthiques et droits utilisateur.
+
+Dans une application, le flux cible est :
+
+```text
+1. Envoyer une conversation/session au système CDC.
+2. Extraire des deltas cognitifs.
+3. Indexer ces deltas par utilisateur.
+4. À la prochaine requête, récupérer seulement les deltas utiles.
+5. Injecter ces deltas dans le contexte du LLM avec leurs niveaux de confiance.
+```
+
+Exemple conceptuel :
+
+```text
+Session 1: l’utilisateur veut une API très détaillée.
+Session 2: ils corrige : ils préfèrent maintenant une API minimale pour le MVP.
+CDC stocke la transition : “préférence passée de détaillée → minimale pour réduire le scope MVP”.
+```
+
+---
+
+## État actuel
+
+CDC est un projet **research-stage**. Il ne doit pas encore être présenté comme une technologie validée scientifiquement.
+
+| Chantier | État |
 |---|---|
-| Public specification | v0.1, active refinement |
-| Core implementation | private MVP running |
-| Synthetic benchmark | first deterministic MVP snapshot published |
-| Human validation protocol | designed, not executed |
-| Paper | not started |
+| Spécification publique | v0.1, en évolution |
+| Implémentation core | MVP privé fonctionnel |
+| Benchmark synthétique | snapshot déterministe publié |
+| Validation humaine | protocole conçu, pas encore exécuté |
+| Article/paper | pas commencé |
 
-The immediate goal is modest: expand the runnable MVP benchmark before broader communication.
+Voir [`BENCHMARK.md`](BENCHMARK.md) pour les résultats actuels.
 
-See [`BENCHMARK.md`](BENCHMARK.md) for the first synthetic benchmark snapshot.
+---
+
+## Ce que CDC n’est pas
+
+- Pas une base vectorielle générale.
+- Pas une preuve que la cognition humaine est entièrement modélisable.
+- Pas une astuce de compression de prompt.
+- Pas un outil clinique ou psychologique validé.
+- Pas un remplacement du RAG sourcé.
+
+CDC est une hypothèse d’architecture mémoire à tester, critiquer et améliorer.
+
+---
+
+## Éthique et confidentialité
+
+CDC peut révéler des trajectoires sensibles : changements de croyance, préférences, contradictions, vulnérabilités. Les exigences minimales sont donc strictes :
+
+- les deltas doivent être inspectables ;
+- les inférences doivent être clairement marquées ;
+- l’utilisateur doit pouvoir corriger, supprimer, exporter ou désactiver la mémoire ;
+- aucun profilage caché ;
+- aucun usage publicitaire ou décisionnel sensible sans cadre spécifique.
+
+Voir [`ETHICS.md`](./ETHICS.md).
+
+---
+
+## Contribuer
+
+Ouvrez une Issue pour :
+
+- critiques conceptuelles ;
+- propositions de benchmark ;
+- risques d’usage ou de confidentialité ;
+- travaux liés ;
+- collaborations de recherche.
+
+Merci de distinguer clairement les hypothèses des résultats validés.
+
+---
+
+# English
+
+## What is CDC for?
+
+**CDC — Cognitive Delta Compression** is a memory architecture for LLM applications. Its goal is to preserve **how a user’s understanding changes over time**, rather than storing only isolated facts, document chunks, or summaries.
+
+CDC is useful for long-running interactions where continuity matters:
+
+- research assistance;
+- coaching or long-term support;
+- education;
+- technical collaboration;
+- product discovery;
+- journaling or personal reflection with strict ethical constraints.
+
+The core idea: a user is not just a list of preferences. Preferences, beliefs, goals, and constraints **change**. CDC tries to represent those changes.
+
+---
+
+## What CDC does
+
+Instead of storing only:
+
+```text
+user prefers X
+```
+
+CDC tries to store:
+
+```text
+the user used to prefer X, then shifted toward Y after a constraint or correction
+```
+
+A CDC unit is a **cognitive delta**:
+
+```text
+Δ(mental state n → mental state n+1)
++ optional anchor
++ confidence
++ time decay
++ possible tension/contradiction
+```
+
+CDC distinguishes between:
+
+- `ANCHORED`: verifiable or explicitly grounded information;
+- `INFERRED`: an uncertain inference from conversation context.
+
+Inferred deltas must never be presented as certain facts.
+
+---
+
+## Why not only RAG or classic memory?
+
+| Approach | Stored unit | Main limitation |
+|---|---|---|
+| RAG | document chunks | retrieves context, but not necessarily the user’s trajectory |
+| Fact memory | extracted facts/preferences | often overwrites changes and contradictions |
+| Conversation summary | compact summary | may lose why the change happened |
+| CDC | transitions, confidence, tensions | experimental and still needs validation |
+
+CDC complements RAG. It is not meant to replace source-grounded retrieval.
 
 ---
 
@@ -59,140 +249,101 @@ SESSION
   ▼
 ENCODE ──▶ INDEX ──▶ FOSSILIZE ──▶ RETRIEVE ──▶ VERIFY ──▶ LLM context
   ▲                                      │
-  └────────────── feedback ◀─────────────┘
+  └────────────── feedback ◀────────────┘
 ```
 
-### 1. ENCODE
-Extracts candidate transitions from a session transcript and classifies them as:
+1. **ENCODE** — extracts transitions from a session.
+2. **INDEX** — stores deltas in a user trajectory.
+3. **FOSSILIZE** — compresses stable chains of deltas.
+4. **RETRIEVE** — injects the smallest useful context under a token budget.
+5. **VERIFY** — checks invariants, sources, and tensions.
 
-- `ANCHORED`: externally verifiable or explicitly grounded;
-- `INFERRED`: model-inferred from conversation context, never treated as a fact.
+---
 
-### 2. INDEX
-Stores deltas in a trajectory graph and flags tensions when a new delta conflicts with prior trajectory.
+## How to use it today
 
-### 3. FOSSILIZE
-Asynchronously compresses stable delta chains into fossil nodes. Original deltas are archived, not silently deleted.
+This repository contains the **public specification**. The MVP implementation is still private while validation is in progress.
 
-### 4. RETRIEVE
-Selects the smallest useful set of deltas under a token budget. Priority order:
+Suggested reading order:
+
+1. [`README.md`](./README.md) — general concept;
+2. [`BENCHMARK.md`](./BENCHMARK.md) — current synthetic results;
+3. [`RESEARCH.md`](./RESEARCH.md) — evaluation protocol;
+4. [`ETHICS.md`](./ETHICS.md) — ethical constraints and user rights.
+
+In an application, the target flow is:
 
 ```text
-Fossil nodes > ANCHORED deltas > INFERRED deltas
+1. Send a conversation/session to CDC.
+2. Extract cognitive deltas.
+3. Index those deltas per user.
+4. On the next request, retrieve only useful deltas.
+5. Inject those deltas into the LLM context with confidence labels.
 ```
 
-### 5. VERIFY
-Checks grounding, marks stale sources, and feeds consistency failures back into future encoding.
+Conceptual example:
+
+```text
+Session 1: the user wants a very detailed API.
+Session 2: they correct this and now prefer a minimal API for the MVP.
+CDC stores the transition: “preference shifted from detailed → minimal to reduce MVP scope”.
+```
 
 ---
 
-## Minimal CDC unit
+## Current status
 
-```python
-@dataclass
-class CDCUnit:
-    id: UUID
-    type: Literal["ANCHORED", "INFERRED"]
-    delta_vector: list[float]
-    anchor_hash: str | None
-    confidence: float
-    decay_rate: float
-    tension_flag: bool
-    inject_cost: int
-    domain: str
-    session_ref: UUID
-    archived: bool
-    created_at: datetime
-```
+CDC is a **research-stage** project. It should not yet be presented as scientifically validated technology.
 
-Key invariants:
+| Workstream | Status |
+|---|---|
+| Public specification | v0.1, active refinement |
+| Core implementation | private MVP running |
+| Synthetic benchmark | deterministic snapshot published |
+| Human validation | protocol designed, not executed |
+| Paper | not started |
 
-- `ANCHORED` deltas require an `anchor_hash`.
-- `INFERRED` deltas must not have an `anchor_hash`.
-- `INFERRED` confidence is capped at `0.4`.
-- Confidence decays over time.
-- Contradictions are flagged, not silently resolved.
-
----
-
-## Difference from adjacent systems
-
-| System | Primary stored unit | CDC distinction |
-|---|---|---|
-| RAG | document chunk | CDC stores change in understanding, not source text |
-| mem0-style memory | extracted fact/preference | CDC stores direction, confidence, decay, and tension |
-| MemGPT/Letta | message or memory page | CDC optimizes for trajectory injection under budget |
-| Knowledge graph | entity/relation | CDC stores transitions between cognitive states |
-
-CDC is complementary to RAG. It is not meant to replace document retrieval.
+See [`BENCHMARK.md`](BENCHMARK.md) for current results.
 
 ---
 
 ## What CDC is not
 
 - Not a general vector database.
-- Not a proof that cognition can be fully modeled.
+- Not proof that human cognition can be fully modeled.
 - Not a prompt-compression trick.
 - Not a validated clinical or psychological tool.
-- Not a replacement for source-grounded retrieval.
+- Not a replacement for source-grounded RAG.
 
-CDC is a memory design hypothesis that must be benchmarked and challenged.
-
----
-
-## Evaluation plan
-
-The first public benchmark should test CDC on 10–20 synthetic multi-session conversations before any broad communication.
-
-Minimum metrics:
-
-- injected token count vs baseline memory;
-- cross-session coherence;
-- contradiction/tension detection;
-- inferred-delta confidence compliance;
-- human-readable failure cases.
-
-See [`RESEARCH.md`](./RESEARCH.md) for the validation protocol.
+CDC is a memory architecture hypothesis to test, challenge, and improve.
 
 ---
 
 ## Ethics and privacy
 
-CDC can model sensitive longitudinal patterns. The ethical baseline is therefore stricter than ordinary chat memory:
+CDC can reveal sensitive trajectories: belief changes, preferences, contradictions, vulnerabilities. The minimum requirements are strict:
 
-- every delta must be inspectable;
-- inferred deltas must be visibly labeled as uncertain;
-- users must be able to correct or delete deltas;
-- predictive outputs require separate opt-in;
-- cross-user sharing, advertising, and hidden profiling are out of scope.
+- deltas must be inspectable;
+- inferred deltas must be clearly labeled;
+- users must be able to correct, delete, export, or disable memory;
+- no hidden profiling;
+- no advertising or sensitive decision use without a dedicated framework.
 
-See [`ETHICS.md`](./ETHICS.md) for the full framework.
-
----
-
-## Repository structure
-
-This repository contains the public specification only. The MVP implementation is currently private until the benchmark is reproducible and safe to publish.
-
-Suggested reading order:
-
-1. [`README.md`](./README.md) — concept and architecture;
-2. [`RESEARCH.md`](./RESEARCH.md) — evaluation strategy;
-3. [`ETHICS.md`](./ETHICS.md) — constraints and user rights.
+See [`ETHICS.md`](./ETHICS.md).
 
 ---
 
-## Contributing
+## Contribuer
 
-Open an Issue for:
+Ouvrez une Issue pour :
 
-- conceptual critiques;
-- benchmark suggestions;
-- privacy or misuse concerns;
-- related work;
-- research collaboration.
+- critiques conceptuelles ;
+- propositions de benchmark ;
+- misuse ou de confidentialité ;
+- travaux liés ;
+- collaborations de recherche.
 
-Please distinguish between validated results and hypotheses.
+Please clearly distinguish hypotheses from validated results.
 
 ---
 
