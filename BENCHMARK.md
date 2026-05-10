@@ -1,6 +1,6 @@
 # CDC Synthetic Benchmark — MVP
 
-This is the first public benchmark snapshot for Cognitive Delta Compression (CDC). It is intentionally small and deterministic: it validates the current MVP pipeline, not general LLM answer quality.
+This is the second public benchmark snapshot for Cognitive Delta Compression (CDC). It remains deterministic: it validates the current MVP pipeline, not general LLM answer quality.
 
 ## Scope
 
@@ -9,6 +9,7 @@ The benchmark covers:
 - encoding session transcripts into CDC deltas;
 - indexing deltas in a user-scoped trajectory store;
 - retrieving compact context under a token budget;
+- comparing against deterministic raw-history, summary-memory, and compact lexical-retrieval baselines;
 - flagging expected tensions;
 - verifying CDC invariants.
 
@@ -22,41 +23,45 @@ It does **not** cover:
 
 ## Dataset
 
-- 12 synthetic multi-session conversations.
-- Topics include API preference shifts, benchmark reporting style, privacy red lines, implementation scoping, token budgets, and retrieval priority.
+- 20 synthetic multi-session conversations.
+- Topics include API preference shifts, benchmark reporting style, privacy red lines, implementation scoping, token budgets, retrieval priority, architecture decisions, public-claim discipline, user control, and communication timing.
 - Each case defines expected retrieval terms and whether tension should be detected.
 
 ## Results
 
 | Metric | Result |
 |---|---:|
-| Cases | 12 |
-| Average token savings vs compact snippet baseline | 9.9% |
-| Coherence pass rate | 100.0% |
+| Cases | 20 |
+| Average CDC token savings vs raw history | 9.6% |
+| Average CDC token savings vs naive summary memory | 1.8% |
+| Average CDC token savings vs compact lexical retrieval | -8.1% |
+| CDC coherence pass rate | 100.0% |
+| Naive summary coherence pass rate | 100.0% |
+| Compact retrieval coherence pass rate | 80.0% |
 | Expected tension detection | 100.0% |
 | Verification issues | 0 |
 
 ## Interpretation
 
-This result is a sanity check, not a scientific claim. It shows that the first MVP can preserve expected continuity signals while injecting a smaller context than the compact baseline used in the test.
+This result is a sanity check, not a scientific claim. It shows that the current MVP can preserve expected continuity signals and tension flags across a broader synthetic dataset.
 
-The token savings are modest because the synthetic conversations are already short. Larger savings should only be claimed after testing longer histories and stronger baselines.
+The compact lexical retrieval baseline uses fewer tokens than CDC on average, but loses expected terms in 20% of cases. This is the useful trade-off to study next: CDC is currently optimizing explicit continuity and uncertainty labeling, not pure token minimization.
 
 ## Known limitations
 
-- Synthetic conversations are small and hand-authored.
-- Baseline uses compact snippets, not a production RAG or memory system.
+- Synthetic conversations are still hand-authored.
+- Baselines are deterministic approximations, not production RAG or memory systems.
 - Token counts are approximate word-based estimates.
 - No human evaluation is included yet.
 - No claim is made that CDC improves final model answers in real deployments.
 
 ## Next benchmark step
 
-The next evaluation should use 20+ longer conversations with:
+The next evaluation should use longer and less curated conversations with:
 
 - 3–6 sessions per user;
 - stable preferences;
 - changed preferences;
 - contradictions and corrections;
 - distractor facts;
-- direct comparison against summary memory and retrieval baselines.
+- LLM-as-judge and/or human review for answer quality, beyond deterministic expected-term checks.
