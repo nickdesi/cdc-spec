@@ -40,12 +40,14 @@ CDC is **not production-ready** and should not be presented as validated science
 | Workstream | Status |
 |---|---|
 | Public specification | v0.1, active refinement |
-| Core implementation | private MVP in progress |
-| Synthetic benchmark | planned before public communication |
+| Core implementation | private MVP running |
+| Synthetic benchmark | first deterministic MVP snapshot published |
 | Human validation protocol | designed, not executed |
 | Paper | not started |
 
-The immediate goal is modest: build a runnable MVP, test it on synthetic multi-session conversations, and publish a short benchmark before broader communication.
+The immediate goal is modest: expand the runnable MVP benchmark before broader communication.
+
+See [`BENCHMARK.md`](BENCHMARK.md) for the first synthetic benchmark snapshot.
 
 ---
 
