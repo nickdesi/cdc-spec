@@ -1,77 +1,159 @@
-# CDC Validation Protocol
+# CDC Research and Evaluation Plan
 
 ## Objective
 
-Empirically demonstrate that CDC improves upon RAG-standard memory systems on the following dimensions:
-- Response quality at equivalent or lower token cost
-- Cross-session coherence
-- Contradiction rate
-- User-perceived understanding
+Evaluate whether Cognitive Delta Compression (CDC) can improve longitudinal LLM memory on three practical dimensions:
+
+1. **Token efficiency** — fewer injected tokens than baseline memory.
+2. **Cross-session coherence** — better continuity across evolving user positions.
+3. **Error visibility** — contradictions and uncertain inferences are surfaced instead of hidden.
+
+CDC should be considered successful only if it improves continuity without concealing uncertainty.
 
 ---
 
-## Protocol design
+## Evaluation sequence
 
-### Participants
-- N = 100 users, minimum 30 sessions each
-- Domain mix: 40% technical (dev, research), 40% knowledge work, 20% creative
-- Recruited via opt-in, full informed consent required
+### Phase 0 — Invariant tests
 
-### Groups
-- **Control** — Standard RAG memory (full session summaries injected)
-- **Test** — CDC pipeline (delta injection, budget 500 tokens)
+Before model-quality claims, the implementation must prove basic safety invariants:
 
-### Session structure
-Each session includes 3 standardized probe questions at start and end:
-1. Domain-specific factual recall
-2. Position/opinion on previously discussed topic
-3. Novel synthesis question requiring cross-session reasoning
+- `ANCHORED` deltas require an anchor hash.
+- `INFERRED` deltas cannot carry anchor hashes.
+- `INFERRED` confidence never exceeds `0.4`.
+- confidence decay is applied at retrieval time.
+- tension flags are preserved in injected context.
 
-### Metrics
+### Phase 1 — Synthetic benchmark
 
-| Metric | Measurement | Tool |
-|---|---|---|
-| Response quality | Human eval (1-5 Likert) + automated (ROUGE-L, BERTScore) | Blind raters |
-| Token cost | Actual tokens injected per session | API logging |
-| Coherence | Contradiction rate between sessions | Automated probe comparison |
-| Trajectory capture | Delta accuracy vs human-annotated ground truth | Human annotation |
-| User satisfaction | Exit survey, NPS | Self-reported |
+Run 10–20 synthetic multi-session conversations before any public communication.
 
-### Economic benchmark
-For each participant session, log:
-- `tokens_injected_cdc` — actual tokens used by CDC context
-- `tokens_injected_rag` — equivalent RAG context tokens
-- `consolidation_cost` — tokens spent by async consolidation worker
+Each synthetic case should include:
 
-Break-even condition: `tokens_injected_cdc + consolidation_cost < tokens_injected_rag`
+- 3–6 sessions;
+- at least one stable preference or belief;
+- at least one changed preference or belief;
+- at least one contradiction or correction;
+- expected deltas and expected tensions.
 
----
+Compare:
 
-## ε calibration sub-study
-
-Parallel to the main study: 20 participants across 4 domains (tech, philosophy, creative, factual).
-
-Test 5 values of ε ∈ {0.01, 0.05, 0.1, 0.2, 0.5} per domain.
-
-Measure: fossilization rate, information loss (probe variance post-fossil), retrieval accuracy.
-
-Output: domain-specific ε lookup table for production config.
-
----
-
-## Timeline estimate
-
-| Phase | Duration |
+| Variant | Description |
 |---|---|
-| Instrument setup | 3 weeks |
-| Participant recruitment | 2 weeks |
-| Data collection | 8 weeks |
-| Analysis | 3 weeks |
-| Paper draft | 4 weeks |
-| **Total** | **~5 months** |
+| Baseline summary | inject compact session summaries or raw memory snippets |
+| CDC | inject selected deltas under a fixed token budget |
+
+Minimum metrics:
+
+| Metric | Definition |
+|---|---|
+| Token savings | `1 - cdc_tokens / baseline_tokens` |
+| Delta recall | expected deltas retrieved / expected deltas |
+| Coherence pass rate | synthetic probe answered with correct evolved state |
+| Tension detection | expected contradictions flagged / expected contradictions |
+| Inference safety | inferred deltas above confidence cap count |
+
+The benchmark report must include failure cases, not only aggregate scores.
+
+### Phase 2 — Expert review
+
+Before human-user studies, ask reviewers to inspect:
+
+- schema design;
+- benchmark cases;
+- ethics constraints;
+- claims made in public documentation.
+
+### Phase 3 — Human validation study
+
+Only after the synthetic benchmark is reproducible.
+
+Target design:
+
+- N = 100 users;
+- 30 sessions minimum per user;
+- domain mix: technical, knowledge work, creative;
+- opt-in participation with explicit consent;
+- control group: standard RAG/summary memory;
+- test group: CDC delta injection.
+
+Session probes:
+
+1. recall a previously established user position;
+2. handle a changed or corrected position;
+3. synthesize across sessions without ignoring uncertainty.
+
+Metrics:
+
+| Metric | Measurement |
+|---|---|
+| Response quality | blind human rating + task-specific checks |
+| Token cost | actual injected context tokens |
+| Coherence | contradiction rate across probes |
+| Trajectory capture | match against human-annotated transitions |
+| User trust | survey on inspectability/control |
 
 ---
 
-## Seeking collaboration
+## Economic benchmark
 
-If you are a researcher interested in co-designing or co-running this protocol, open an Issue tagged `[research-collab]`.
+For every evaluated session, log:
+
+- `tokens_injected_cdc`;
+- `tokens_injected_baseline`;
+- `deltas_retrieved`;
+- `tensions_flagged`;
+- `verification_issues`;
+- optional async consolidation cost.
+
+Break-even condition:
+
+```text
+tokens_injected_cdc + consolidation_cost < tokens_injected_baseline
+```
+
+For the MVP benchmark, consolidation cost may be reported as `0` if fossilization is not enabled yet.
+
+---
+
+## Fossilization calibration
+
+The fossilization threshold ε remains an open parameter.
+
+Future calibration should test values such as:
+
+```text
+ε ∈ {0.01, 0.05, 0.10, 0.20, 0.50}
+```
+
+Per domain, measure:
+
+- fossilization rate;
+- retrieval accuracy after fossilization;
+- information loss on probe questions;
+- stale-memory rate.
+
+No production default should be claimed until this is tested.
+
+---
+
+## Reporting standard
+
+Every public benchmark should report:
+
+- dataset size and generation method;
+- baseline definition;
+- token counting method;
+- exact CDC configuration;
+- aggregate metrics;
+- representative wins;
+- representative failures;
+- limitations.
+
+Claims must be phrased as benchmark-specific results, not general proof.
+
+---
+
+## Collaboration
+
+Open an Issue tagged `[research-collab]` for protocol critique, dataset design, privacy review, or independent replication.

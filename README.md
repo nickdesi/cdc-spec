@@ -2,158 +2,199 @@
 
 > **Don't store facts. Store transitions.**
 
-CDC is a novel memory architecture for LLM-based systems that stores *how understanding evolves* rather than *what was said*.
+Cognitive Delta Compression (CDC) is a research-stage memory architecture for LLM applications. It stores **how a user's understanding changes over time** instead of storing only isolated facts, chunks, or summaries.
+
+CDC is intended for longitudinal interactions where continuity matters: coaching, research assistance, education, product discovery, therapy-adjacent journaling, and technical collaboration.
 
 ---
 
-## The core insight
+## Why CDC exists
 
-Every existing LLM memory system (RAG, mem0, MemGPT, Zep) stores the same unit of information: **a fact**, extracted from a conversation and indexed for later retrieval.
+Most LLM memory systems store some variant of:
 
-CDC stores a fundamentally different unit: a **cognitive delta** — the directional vector between two states of understanding.
-
-```
-Traditional memory :  (entity, attribute, value, timestamp)
-CDC               :  Δ(M_n → M_n+1) + anchor + confidence + decay
+```text
+(entity, attribute, value, timestamp)
 ```
 
-This distinction matters because:
-- A fact can become stale silently
-- A delta carries its own temporal direction and confidence decay
-- A chain of deltas captures *trajectory*, not just state
-- Trajectory enables anticipation — not just recall
+That works for stable facts, but it loses the trajectory of reasoning:
+
+- a preference that became more precise;
+- a belief that weakened after new evidence;
+- a technical decision that changed because constraints changed;
+- a contradiction that should stay visible instead of being overwritten.
+
+CDC stores a different unit:
+
+```text
+Δ(M_n → M_n+1) + anchor + confidence + decay + tension state
+```
+
+A **cognitive delta** is not “what the user said”. It is the directional transition between two states of understanding.
 
 ---
 
-## Architecture overview
+## Current status
 
-```
+CDC is **not production-ready** and should not be presented as validated science yet.
+
+| Workstream | Status |
+|---|---|
+| Public specification | v0.1, active refinement |
+| Core implementation | private MVP in progress |
+| Synthetic benchmark | planned before public communication |
+| Human validation protocol | designed, not executed |
+| Paper | not started |
+
+The immediate goal is modest: build a runnable MVP, test it on synthetic multi-session conversations, and publish a short benchmark before broader communication.
+
+---
+
+## Architecture
+
+```text
 SESSION
   │
   ▼
-┌─────────┐    ┌─────────┐    ┌───────────┐
-│  ENCODE │───▶│  INDEX  │───▶│ FOSSILIZE │  (async, out-of-session)
-└─────────┘    └─────────┘    └───────────┘
-                                     │
-                                     ▼
-                              ┌──────────┐    ┌────────┐
-                              │ RETRIEVE │───▶│ VERIFY │──▶ LLM context
-                              └──────────┘    └────────┘
-                                                   │
-                                                   └──▶ feedback → ENCODE
+ENCODE ──▶ INDEX ──▶ FOSSILIZE ──▶ RETRIEVE ──▶ VERIFY ──▶ LLM context
+  ▲                                      │
+  └────────────── feedback ◀─────────────┘
 ```
 
-### Layer 1 — ENCODE
-Transforms session transcripts into raw CDC_UNITs. Classifies each delta as `ANCHORED` (externally verifiable source) or `INFERRED` (emergent from conversation). Applies contrastive embeddings over standardized probe questions.
+### 1. ENCODE
+Extracts candidate transitions from a session transcript and classifies them as:
 
-### Layer 2 — INDEX
-Inserts CDC_UNITs into a directed acyclic graph (DAG) of cognitive trajectory. Runs tension detection (contradiction flagging), confidence decay scheduling, and domain partitioning.
+- `ANCHORED`: externally verifiable or explicitly grounded;
+- `INFERRED`: model-inferred from conversation context, never treated as a fact.
 
-### Layer 3 — FOSSILIZE *(async)*
-Background consolidation process — the computational equivalent of sleep-based memory consolidation. Collapses stable delta chains into Fossil Nodes when variance across probe questions drops below domain-specific threshold ε. Original chains are archived, never deleted.
+### 2. INDEX
+Stores deltas in a trajectory graph and flags tensions when a new delta conflicts with prior trajectory.
 
-### Layer 4 — RETRIEVE
-Hybrid retrieval combining BM25 (metadata), cosine similarity (contrastive space), and graph traversal (trajectory proximity). Token budget allocator selects optimal delta subset for injection. Priority: `Fossil Nodes > ANCHORED > INFERRED`.
+### 3. FOSSILIZE
+Asynchronously compresses stable delta chains into fossil nodes. Original deltas are archived, not silently deleted.
 
-### Layer 5 — VERIFY
-Closes the loop. Validates anchor hashes against live sources, runs consistency micro-probes on LLM output, feeds results back to ENCODE as confidence updates.
+### 4. RETRIEVE
+Selects the smallest useful set of deltas under a token budget. Priority order:
+
+```text
+Fossil nodes > ANCHORED deltas > INFERRED deltas
+```
+
+### 5. VERIFY
+Checks grounding, marks stale sources, and feeds consistency failures back into future encoding.
 
 ---
 
-## The CDC_UNIT schema
+## Minimal CDC unit
 
 ```python
 @dataclass
 class CDCUnit:
     id: UUID
     type: Literal["ANCHORED", "INFERRED"]
-    delta_vector: list[float]      # 768-dim, contrastive space
-    anchor_hash: str | None        # sha256(source) — None if INFERRED
-    confidence: float              # ANCHORED: max 1.0 / INFERRED: max 0.4
-    decay_rate: float              # ANCHORED: 0.001/day / INFERRED: 0.01/day
-    tension_flag: bool             # contradiction with existing delta detected
-    inject_cost: int               # estimated tokens if injected
-    domain: str                    # auto-assigned semantic cluster
+    delta_vector: list[float]
+    anchor_hash: str | None
+    confidence: float
+    decay_rate: float
+    tension_flag: bool
+    inject_cost: int
+    domain: str
     session_ref: UUID
-    archived: bool                 # True if fossilized (never deleted)
+    archived: bool
     created_at: datetime
 ```
 
----
+Key invariants:
 
-## Key properties
-
-| Property | CDC | RAG | mem0 | MemGPT |
-|---|---|---|---|---|
-| Unit of storage | Transition | Chunk | Fact | Message |
-| Captures trajectory | ✅ | ❌ | ❌ | ❌ |
-| Confidence decay | ✅ | ❌ | Partial | ❌ |
-| Contradiction detection | ✅ (at write) | ❌ | ✅ (at read) | ❌ |
-| Token cost scales with | Δ (delta count) | M (memory size) | M | M |
-| Verifiable grounding | Per unit | Per chunk | Per fact | ❌ |
-| Async consolidation | ✅ | ❌ | ❌ | ❌ |
+- `ANCHORED` deltas require an `anchor_hash`.
+- `INFERRED` deltas must not have an `anchor_hash`.
+- `INFERRED` confidence is capped at `0.4`.
+- Confidence decays over time.
+- Contradictions are flagged, not silently resolved.
 
 ---
 
-## What CDC is NOT
+## Difference from adjacent systems
 
-- ❌ Not a vector database
-- ❌ Not a graph memory (stores transitions, not entities)
-- ❌ Not a compression algorithm for prompts
-- ❌ Not a replacement for RAG on document retrieval tasks
+| System | Primary stored unit | CDC distinction |
+|---|---|---|
+| RAG | document chunk | CDC stores change in understanding, not source text |
+| mem0-style memory | extracted fact/preference | CDC stores direction, confidence, decay, and tension |
+| MemGPT/Letta | message or memory page | CDC optimizes for trajectory injection under budget |
+| Knowledge graph | entity/relation | CDC stores transitions between cognitive states |
 
-CDC is specifically designed for **longitudinal user-LLM interactions** where the evolution of understanding over time is as important as the content of any single session.
-
----
-
-## Open research questions
-
-Before any production deployment, these remain open:
-
-1. **ε calibration** — The fossilization variance threshold must be empirically calibrated per domain
-2. **Economic break-even** — Token savings vs consolidation cost break-even point not yet benchmarked
-3. **Cross-model stability** — Strategy for delta migration when embedding model changes
-4. **Validation protocol** — 100 users / 30 sessions / RAG control group needed
-
-See [`RESEARCH.md`](./RESEARCH.md) for the full validation protocol.
+CDC is complementary to RAG. It is not meant to replace document retrieval.
 
 ---
 
-## Ethical commitments
+## What CDC is not
 
-CDC models cognitive trajectories — a capability with significant privacy implications. The following are non-negotiable constraints, not optional features:
+- Not a general vector database.
+- Not a proof that cognition can be fully modeled.
+- Not a prompt-compression trick.
+- Not a validated clinical or psychological tool.
+- Not a replacement for source-grounded retrieval.
 
-- **Full transparency** — users can inspect every stored CDC_UNIT
-- **Free correction** — any delta can be annotated, corrected, or deleted
-- **Right to erasure** — deletion triggers refossilization of dependent chains
-- **Strict isolation** — deltas are never shared, sold, or used cross-user
-- **Explicit consent** — predictive capabilities are declared at onboarding
-- **Audit log** — every operation is logged with timestamp and reason
-
-See [`ETHICS.md`](./ETHICS.md) for the complete framework.
+CDC is a memory design hypothesis that must be benchmarked and challenged.
 
 ---
 
-## Status
+## Evaluation plan
 
-```
-[████████░░] Specification        v0.1 — complete
-[████░░░░░░] Core implementation  in progress (private repo)
-[░░░░░░░░░░] Validation protocol  not started
-[░░░░░░░░░░] Paper                not started
-```
+The first public benchmark should test CDC on 10–20 synthetic multi-session conversations before any broad communication.
+
+Minimum metrics:
+
+- injected token count vs baseline memory;
+- cross-session coherence;
+- contradiction/tension detection;
+- inferred-delta confidence compliance;
+- human-readable failure cases.
+
+See [`RESEARCH.md`](./RESEARCH.md) for the validation protocol.
+
+---
+
+## Ethics and privacy
+
+CDC can model sensitive longitudinal patterns. The ethical baseline is therefore stricter than ordinary chat memory:
+
+- every delta must be inspectable;
+- inferred deltas must be visibly labeled as uncertain;
+- users must be able to correct or delete deltas;
+- predictive outputs require separate opt-in;
+- cross-user sharing, advertising, and hidden profiling are out of scope.
+
+See [`ETHICS.md`](./ETHICS.md) for the full framework.
+
+---
+
+## Repository structure
+
+This repository contains the public specification only. The MVP implementation is currently private until the benchmark is reproducible and safe to publish.
+
+Suggested reading order:
+
+1. [`README.md`](./README.md) — concept and architecture;
+2. [`RESEARCH.md`](./RESEARCH.md) — evaluation strategy;
+3. [`ETHICS.md`](./ETHICS.md) — constraints and user rights.
 
 ---
 
 ## Contributing
 
-This repository contains the public specification only. Discussion, critique, and formal review are welcome via Issues.
+Open an Issue for:
 
-If you are a researcher interested in the validation protocol, open an Issue tagged `[research-collab]`.
+- conceptual critiques;
+- benchmark suggestions;
+- privacy or misuse concerns;
+- related work;
+- research collaboration.
+
+Please distinguish between validated results and hypotheses.
 
 ---
 
 ## License
 
 Specification: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)  
-Implementation: proprietary (private repo)
+Implementation: private/proprietary during MVP stage.
