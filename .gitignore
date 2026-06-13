@@ -1,0 +1,7 @@
+.DS_Store
+
+# Agent-specific directories
+.agent/
+.agents/
+/data/
+/scratch/

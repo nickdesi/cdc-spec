@@ -1,6 +1,6 @@
 # Cognitive Delta Compression (CDC)
 
-> **FR — Ne stocke pas seulement des faits. Stocke les transitions.**  
+> **FR — Ne stocke pas seulement des faits. Stocke les transitions.**
 > **EN — Don’t only store facts. Store transitions.**
 
 ```text
@@ -357,5 +357,5 @@ Please clearly distinguish hypotheses from validated results.
 
 ## License
 
-Specification: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)  
+Specification: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 Implementation: private/proprietary during MVP stage.
